@@ -12,6 +12,9 @@ const loadTestRoutes = require('./src/routes/loadTestRoutes');
 const errorRoutes = require('./src/routes/errorRoutes');
 const databaseRoutes = require('./src/routes/databaseRoutes');
 
+// Initialize system health metrics
+metrics.updateSystemHealth('application', 1); // Mark app as healthy on startup
+
 process.on('uncaughtException', (err) => {
   console.error('UNCAUGHT EXCEPTION! 💥 Logging the error and continuing...');
   console.error(err.name, err.message);
@@ -75,6 +78,8 @@ try {
   } catch (err) {
     logger.error('Failed to initialize metrics middleware', { error: err.message });
     console.error('Failed to initialize metrics middleware', err);
+    // Mark metrics as unhealthy
+    metrics.updateSystemHealth('metrics', 0);
   }
   
   // Documentation route - showing all available endpoints
@@ -205,9 +210,47 @@ try {
     }
   });
   
-  // Health check
+  // Enhanced health checks
   app.get('/health', (req, res) => {
+    // Basic health check
     res.status(200).json({ status: 'UP' });
+  });
+  
+  app.get('/health/detailed', (req, res) => {
+    // More detailed health status
+    const memStats = process.memoryUsage();
+    const healthData = {
+      status: 'UP',
+      uptime: process.uptime(),
+      timestamp: new Date().toISOString(),
+      memory: {
+        rss: `${Math.round(memStats.rss / 1024 / 1024)} MB`,
+        heapTotal: `${Math.round(memStats.heapTotal / 1024 / 1024)} MB`,
+        heapUsed: `${Math.round(memStats.heapUsed / 1024 / 1024)} MB`,
+        external: `${Math.round(memStats.external / 1024 / 1024)} MB`,
+      },
+      activeRequests: {
+        GET: 0,
+        POST: 0,
+        PUT: 0,
+        DELETE: 0
+      }
+    };
+    
+    // Try to get active requests metrics, handle gracefully if they don't exist
+    try {
+      healthData.activeRequests = {
+        GET: metrics.activeRequests.labels('GET').get() || 0,
+        POST: metrics.activeRequests.labels('POST').get() || 0,
+        PUT: metrics.activeRequests.labels('PUT').get() || 0,
+        DELETE: metrics.activeRequests.labels('DELETE').get() || 0
+      };
+    } catch (error) {
+      logger.warn('Error getting active requests metrics', { error: error.message });
+      // Keep the default values from the initial healthData object
+    }
+    
+    res.status(200).json(healthData);
   });
   
   // Routes
@@ -289,9 +332,9 @@ try {
   
   // Start the server
   app.listen(port, () => {
-    logger.info(`Server running on port ${port}`);
-    logger.info(`Environment: ${process.env.NODE_ENV || 'development (default)'}`);
-    logger.info(`Detailed error responses: ${(process.env.NODE_ENV !== 'production') ? 'Enabled (non-production)' : 'Disabled (production)'}`);
+    logger.info(`Server is running on port ${port}`);
+    console.log(`Server is running on port ${port}`);
+    metrics.updateSystemHealth('server', 1); // Mark server as healthy once listening
     
     logger.info('Available test endpoints:');
     logger.info('- Basic endpoints: /, /success, /error, /slow');
@@ -301,12 +344,14 @@ try {
     logger.info('- Documentation: /docs');
     logger.info('- Metrics: /metrics');
     logger.info('- Dashboard: Open http://localhost:3001 for Grafana dashboards (Comprehensive Error Dashboard available)');
+  })
+  .on('error', (err) => {
+    logger.error('Server startup error', { error: err.message });
+    console.error('Server startup error:', err);
+    metrics.updateSystemHealth('server', 0); // Mark server as unhealthy if there's an error
   });
-} catch (error) {
-  logger.error('Fatal application error', { 
-    error: error.message,
-    stack: error.stack 
-  });
-  console.error('FATAL APPLICATION ERROR! Application will keep running but may not function correctly.');
-  console.error(error);
+} catch (err) {
+  logger.error('Application startup error', { error: err.message, stack: err.stack });
+  console.error('Application startup error:', err);
+  metrics.updateSystemHealth('application', 0); // Mark application as unhealthy
 } 

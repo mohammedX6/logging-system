@@ -5,6 +5,7 @@ GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}============================================${NC}"
@@ -69,6 +70,46 @@ check_containers() {
   fi
 }
 
+# Check for business metrics
+check_business_metrics() {
+  echo -e "\n${CYAN}Testing business metrics functionality:${NC}"
+  
+  # Step 1: Generate a business transaction
+  echo -e "\n1. Generating test business transaction..."
+  transaction_id="tx-$(date +%s)"
+  transaction_type="order_created"
+  curl -s -o /dev/null "${NODE_URL}/demo-business-transaction?type=${transaction_type}"
+  echo -e "${GREEN}✓ Generated business transaction${NC} (Type: $transaction_type)"
+  
+  # Step 2: Wait a moment for Prometheus to scrape the metrics
+  echo -e "\n2. Waiting for Prometheus to scrape business metrics (15s)..."
+  sleep 15
+  
+  # Step 3: Check if Prometheus has the business metrics
+  echo -e "\n3. Checking if Prometheus has business transaction metrics..."
+  prom_query="business_transactions_total"
+  prom_response=$(curl -s "${PROMETHEUS_URL}/api/v1/query?query=${prom_query}")
+  
+  if [[ "$prom_response" == *"success"* && "$prom_response" != *"[]"* ]]; then
+    echo -e "${GREEN}✓ Prometheus has scraped business metrics${NC}"
+  else
+    echo -e "${RED}✗ Prometheus doesn't have expected business metrics${NC}"
+  fi
+  
+  # Step 4: Check if Loki has the business transaction logs
+  echo -e "\n4. Checking if Loki has business transaction logs..."
+  loki_query="{job=\"nodejs-app\"} |= \"Business transaction tracked\""
+  current_time=$(date +%s)
+  start_time=$((current_time - 3600)) # 1 hour ago
+  loki_response=$(curl -s -G --data-urlencode "query=${loki_query}" --data-urlencode "start=${start_time}000000000" --data-urlencode "end=${current_time}000000000" --data-urlencode "limit=5" "${LOKI_URL}/loki/api/v1/query_range")
+  
+  if [[ "$loki_response" == *"streams"* && "$loki_response" != *"parse error"* ]]; then
+    echo -e "${GREEN}✓ Loki has collected business transaction logs${NC}"
+  else
+    echo -e "${YELLOW}⚠ Loki may not have business transaction logs yet${NC}"
+  fi
+}
+
 # Test the full flow - generate data and check if it appears in Prometheus
 check_data_flow() {
   echo -e "\n${YELLOW}Testing data flow by generating test data:${NC}"
@@ -117,6 +158,17 @@ check_data_flow() {
   else
     echo -e "${RED}✗ Grafana can't access data sources${NC}"
   fi
+  
+  # Step 6: Check for business metrics dashboards
+  echo -e "\n6. Checking for business metrics dashboard..."
+  grafana_dashboard=$(curl -s "${GRAFANA_URL}/api/dashboards/uid/business-metrics" -u admin:admin)
+  
+  if [[ "$grafana_dashboard" == *"Business"* ]]; then
+    echo -e "${GREEN}✓ Business metrics dashboard is available${NC}"
+  else
+    echo -e "${YELLOW}⚠ Business metrics dashboard may not be available yet${NC}"
+    echo -e "   Dashboard will be available after container restart or after importing manually"
+  fi
 }
 
 # Service URLs
@@ -135,7 +187,15 @@ check_service "Prometheus" "${PROMETHEUS_URL}/-/ready" 200
 check_service "Loki" "${LOKI_URL}/loki/api/v1/status/buildinfo" 200
 check_service "Grafana" "${GRAFANA_URL}/login" 200
 
-# Step 3: Check the data flow between services
+# Step 3: Check if health endpoints are available
+echo -e "\n${BLUE}Checking Health Endpoints:${NC}"
+check_service "Basic Health" "${NODE_URL}/health" 200
+check_service "Detailed Health" "${NODE_URL}/health/detailed" 200
+
+# Step 4: Check business metrics functionality
+check_business_metrics
+
+# Step 5: Check the data flow between services
 check_data_flow
 
 echo -e "\n${BLUE}============================================${NC}"
@@ -144,5 +204,6 @@ echo -e "${BLUE}============================================${NC}"
 
 echo -e "\nTo view your monitoring dashboards:"
 echo -e "  - Grafana: ${GREEN}http://localhost:3001${NC} (admin/admin)"
-echo -e "  - Create a new dashboard with data from Prometheus and Loki"
+echo -e "  - Business Metrics Dashboard: ${GREEN}http://localhost:3001/d/business-metrics/business-metrics-dashboard${NC}"
+echo -e "  - Node.js App Dashboard: ${GREEN}http://localhost:3001/d/nodejs-app/node-js-application-dashboard${NC}"
 echo -e "  - Use the test-apis.sh script to generate more test data" 

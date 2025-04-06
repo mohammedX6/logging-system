@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const logger = require('../utils/logger');
-const { metrics } = require('../utils/metrics');
+const metrics = require('../utils/metrics');
 
 // High CPU usage route - simulates CPU intensive operation
 router.get('/cpu-intensive', (req, res) => {
@@ -75,8 +75,8 @@ router.get('/extreme-cpu', (req, res) => {
   const result = fibonacci(n);
   const duration = (Date.now() - start) / 1000; // Convert to seconds
   
-  // Record fibonacci duration metric
-  metrics.fibonacciDuration.observe({ input: n.toString() }, duration);
+  // Record fibonacci duration metric using safeObserve
+  metrics.safeObserve(metrics.fibonacciDuration, { input: n.toString() }, duration);
   
   logger.info('Extreme CPU operation completed', { 
     duration: `${duration}s`,
@@ -168,8 +168,8 @@ router.get('/heavy-io', async (req, res) => {
     
     const duration = (Date.now() - start) / 1000; // Convert to seconds
     
-    // Record IO operations duration metric
-    metrics.ioOperationsDuration.observe({ iterations: iterations.toString() }, duration);
+    // Record IO operations duration metric using safeObserve
+    metrics.safeObserve(metrics.ioOperationsDuration, { iterations: iterations.toString() }, duration);
     
     logger.info('Heavy I/O operations completed', { 
       iterations,
@@ -203,8 +203,8 @@ router.get('/complex-query', (req, res) => {
       const result = simulateComplexQuery();
       const duration = (Date.now() - start) / 1000; // Convert to seconds
       
-      // Record complex query duration metric
-      metrics.complexQueryDuration.observe(duration);
+      // Record complex query duration metric using safeObserve
+      metrics.safeObserve(metrics.complexQueryDuration, {}, duration);
       
       logger.info('Complex database query completed', { 
         duration: `${duration}s`,
@@ -263,11 +263,12 @@ router.get('/concurrent-workload', async (req, res) => {
     
     const duration = (Date.now() - start) / 1000; // Convert to seconds
     
-    // Record concurrent workload duration metric
-    metrics.concurrentWorkloadDuration.observe(duration);
+    // Record concurrent workload duration metric using safeObserve
+    metrics.safeObserve(metrics.concurrentWorkloadDuration, {}, duration);
     
     logger.info('Concurrent workload completed', { 
-      duration: `${duration}s`
+      duration: `${duration}s`,
+      operations: 5
     });
     
     res.json({ 

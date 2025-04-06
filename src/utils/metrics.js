@@ -131,6 +131,46 @@ const concurrentWorkloadDuration = new client.Histogram({
   registers: [register]
 });
 
+// Business level metrics
+const businessTransactionCounter = new client.Counter({
+  name: 'business_transactions_total',
+  help: 'Total number of business transactions',
+  labelNames: ['type', 'status'],
+  registers: [register]
+});
+
+const businessTransactionDuration = new client.Histogram({
+  name: 'business_transaction_duration_seconds',
+  help: 'Duration of business transactions in seconds',
+  labelNames: ['type', 'status'],
+  buckets: [0.01, 0.05, 0.1, 0.5, 1, 2.5, 5, 10],
+  registers: [register]
+});
+
+// Enhanced error metrics
+const errorDetailsCounter = new client.Counter({
+  name: 'error_details_total',
+  help: 'Detailed breakdown of errors by category and subcategory',
+  labelNames: ['category', 'subcategory', 'code'],
+  registers: [register]
+});
+
+// System health metrics
+const systemHealthGauge = new client.Gauge({
+  name: 'system_health_status',
+  help: 'System health indicators (1=healthy, 0=unhealthy)',
+  labelNames: ['component'],
+  registers: [register]
+});
+
+// Rate limiter metrics
+const rateLimitCounter = new client.Counter({
+  name: 'rate_limit_total',
+  help: 'Total number of rate limit hits',
+  labelNames: ['endpoint', 'ip'],
+  registers: [register]
+});
+
 // Safe observe function to prevent app crashes
 const safeObserve = (histogram, labels, value) => {
   try {
@@ -254,27 +294,73 @@ const trackError = (type) => {
   }
 };
 
+// Utility function for tracking business transactions
+const trackBusinessTransaction = (type, status, duration) => {
+  try {
+    businessTransactionCounter.inc({ type, status });
+    safeObserve(businessTransactionDuration, { type, status }, duration);
+  } catch (error) {
+    logger.error('Error tracking business transaction', { error: error.message });
+  }
+};
+
+// Enhanced error tracking with more details
+const trackDetailedError = (category, subcategory, code) => {
+  try {
+    errorDetailsCounter.inc({ category, subcategory, code: code.toString() });
+    // Also increment the general error counter
+    errorCounter.inc({ type: category });
+  } catch (error) {
+    logger.error('Error in detailed error tracking', { error: error.message });
+  }
+};
+
+// System health monitoring
+const updateSystemHealth = (component, isHealthy) => {
+  try {
+    systemHealthGauge.set({ component }, isHealthy ? 1 : 0);
+  } catch (error) {
+    logger.error('Error updating system health', { error: error.message });
+  }
+};
+
+// Track rate limiting
+const trackRateLimit = (endpoint, ip) => {
+  try {
+    rateLimitCounter.inc({ endpoint, ip });
+  } catch (error) {
+    logger.error('Error tracking rate limit', { error: error.message });
+  }
+};
+
 // Exports
 module.exports = {
   register,
   httpMetricsMiddleware,
   trackDatabaseQuery,
   trackError,
-  metrics: {
-    httpRequestCounter,
-    httpRequestDuration,
-    httpRequestSize,
-    httpResponseSize,
-    databaseQueryCounter,
-    databaseQueryDuration,
-    memoryUsage,
-    activeRequests,
-    errorCounter,
-    fibonacciDuration,
-    memoryLeakGauge,
-    memoryLeakItemsGauge,
-    ioOperationsDuration,
-    complexQueryDuration,
-    concurrentWorkloadDuration
-  }
+  trackBusinessTransaction,
+  trackDetailedError,
+  updateSystemHealth,
+  trackRateLimit,
+  safeObserve,
+  // Expose metrics for direct use in other files
+  httpRequestCounter,
+  httpRequestDuration,
+  databaseQueryCounter,
+  databaseQueryDuration,
+  errorCounter,
+  errorDetailsCounter,
+  activeRequests,
+  memoryUsage,
+  fibonacciDuration,
+  memoryLeakGauge,
+  memoryLeakItemsGauge,
+  ioOperationsDuration,
+  complexQueryDuration,
+  concurrentWorkloadDuration,
+  businessTransactionCounter,
+  businessTransactionDuration,
+  systemHealthGauge,
+  rateLimitCounter
 }; 

@@ -167,13 +167,19 @@ When a request hits your `/load-test/cpu-intensive` endpoint:
 docker-compose up -d
 ```
 
-3. Access the services:
+3. To rebuild and restart the stack:
+
+```bash
+docker-compose down && docker-compose up --build -d
+```
+
+4. Access the services:
    - Node.js App: http://localhost:3000
    - Prometheus: http://localhost:9090
    - Grafana: http://localhost:3001 (admin/admin)
    - Loki: http://localhost:3100
 
-4. (Optional) Run validation and tests:
+5. (Optional) Run validation and tests:
    ```bash
    ./scripts/validate-services.sh
    ./scripts/test-apis.sh
@@ -365,3 +371,71 @@ Logs are saved to files in the `logs` directory:
 - `error.log`: Contains only error-level logs
 
 These log files are automatically rotated when they reach 5MB, with a maximum of 5 historical files kept.
+
+## New Features
+
+### Business Metrics Tracking
+
+This system now includes business-level metrics tracking, which allows you to:
+
+- Monitor business transactions beyond technical metrics
+- Track success and failure rates for business operations
+- Measure performance of business processes
+- Visualize business health in Grafana dashboards
+
+#### Using Business Metrics
+
+To track business transactions in your code:
+
+```javascript
+const businessMetrics = require('./src/utils/businessMetrics');
+
+// Option 1: Wrap a function with metrics
+const processOrderWithMetrics = businessMetrics.withMetrics(
+  processOrder, 
+  businessMetrics.TRANSACTION_TYPES.ORDER_PROCESSED
+);
+
+// Option 2: Time a transaction manually
+const endMeasurement = businessMetrics.startMeasuring(
+  businessMetrics.TRANSACTION_TYPES.ORDER_CREATED
+);
+
+// Later when the transaction is done:
+endMeasurement(businessMetrics.STATUS.SUCCESS, { orderId: 'abc123' });
+```
+
+#### Demo Endpoint
+
+Try out the demo endpoint to see business metrics in action:
+
+```
+GET /demo-business-transaction
+```
+
+Query parameters:
+- `type`: Transaction type (defaults to 'order_created')
+- `fail`: Set to 'true' to simulate a failed transaction
+
+### Enhanced Health Checks
+
+The system now features improved health checks:
+
+```
+GET /health         - Simple status check
+GET /health/detailed - Detailed system health information
+```
+
+The detailed health check provides memory statistics, uptime information, and active request counts.
+
+### System Health Monitoring
+
+System components now report their health status to Prometheus, which can be visualized in the Business Metrics Dashboard.
+
+### Grafana Business Metrics Dashboard
+
+A new Grafana dashboard for business metrics is available showing:
+- Business transaction rates by type and status
+- 95th percentile transaction duration
+- System health status
+- Error counts by type and category
