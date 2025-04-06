@@ -185,6 +185,55 @@ docker-compose down && docker-compose up --build -d
    ./scripts/test-apis.sh
    ```
 
+## Utility Scripts
+
+This project includes several utility scripts to help with development, testing, and maintenance:
+
+### Main Scripts
+- `scripts/test-apis.sh` - Runs all API tests to verify endpoint functionality
+- `scripts/validate-services.sh` - Validates that all services are running correctly
+- `scripts/reset-docker.sh` - Resets the entire Docker environment (stops, removes, rebuilds containers)
+- `scripts/clear-logs-metrics.sh` - Clears all logs and metrics data while preserving Grafana dashboards
+- `scripts/generate_db_errors.sh` - Generates random database errors for testing monitoring dashboards
+
+### API Test Scripts
+The `scripts/api_tests/` directory contains modular test scripts:
+- `run_all.sh` - Runs all API tests in sequence
+- `basic_tests.sh` - Tests basic application endpoints
+- `load_tests.sh` - Tests load-generating endpoints
+- `error_tests.sh` - Tests error-generating endpoints
+- `database_tests.sh` - Tests database simulation endpoints
+- `business_metrics_tests.sh` - Tests business metrics functionality
+- `health_tests.sh` - Tests health check endpoints
+- `system_tests.sh` - Tests system-level endpoints
+
+### Script Usage
+
+To run validation after deployment:
+```bash
+./scripts/validate-services.sh
+```
+
+To test all API endpoints:
+```bash
+./scripts/test-apis.sh
+```
+
+To clean up logs and metrics data:
+```bash
+./scripts/clear-logs-metrics.sh
+```
+
+To reset the entire Docker environment:
+```bash
+./scripts/reset-docker.sh
+```
+
+To generate test database errors for dashboard testing:
+```bash
+./scripts/generate_db_errors.sh
+```
+
 ## Test APIs
 
 The Node.js application includes numerous test endpoints organized into categories:
@@ -371,8 +420,6 @@ Logs are saved to files in the `logs` directory:
 - `error.log`: Contains only error-level logs
 
 These log files are automatically rotated when they reach 5MB, with a maximum of 5 historical files kept.
-
-## New Features
 
 ### Business Metrics Tracking
 
