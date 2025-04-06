@@ -27,6 +27,8 @@
   "id": null,
   "links": [],
   "liveNow": false,
+  "tags": ["business", "metrics", "monitoring", "performance"],
+  "title": "Business Performance Dashboard",
   "panels": [
     {
       "collapsed": false,
@@ -627,7 +629,6 @@
   "refresh": "10s",
   "schemaVersion": 37,
   "style": "dark",
-  "tags": ["business", "metrics", "monitoring"],
   "templating": {
     "list": []
   },
@@ -637,8 +638,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "Business Metrics Dashboard",
-  "uid": "business-metrics",
+  "uid": "business-performance",
   "version": 1,
   "weekStart": ""
 } 

@@ -16,6 +16,19 @@ run_database_tests() {
   test_endpoint "/db/db-error" "Database error simulation" 500
   test_endpoint "/db/slow-query" "Slow database query"
   
+  # New database error simulations
+  print_header "Database Error Types"
+  test_endpoint "/db/ora-00942" "Oracle: Table or view does not exist" 500
+  test_endpoint "/db/ora-00001" "Oracle: Unique constraint violation" 500
+  test_endpoint "/db/syntax-error" "SQL syntax error" 500
+  test_endpoint "/db/group-by" "GROUP BY error" 500
+  test_endpoint "/db/string-conversion" "String conversion error" 500
+  test_endpoint "/db/ora-12154" "Oracle TNS connection error" 500
+  test_endpoint "/db/deadlock" "Database deadlock error" 500
+  test_endpoint "/db/missing-param" "Missing parameter error" 500
+  test_endpoint "/db/ora-01652" "Oracle temp segment error" 500
+  test_endpoint "/db/foreign-key" "Foreign key constraint error" 500
+  
   print_completion "Database simulation testing completed"
 }
 
