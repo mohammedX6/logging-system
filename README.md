@@ -1,4 +1,4 @@
-# Monitoring POC v2
+# Node.js Monitoring & Logging System
 
 A centralized logging and monitoring system using open-source tools (Prometheus, Loki, Promtail, and Grafana) for Node.js applications.
 
