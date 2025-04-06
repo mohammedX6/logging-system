@@ -173,6 +173,12 @@ docker-compose up -d
    - Grafana: http://localhost:3001 (admin/admin)
    - Loki: http://localhost:3100
 
+4. (Optional) Run validation and tests:
+   ```bash
+   ./scripts/validate-services.sh
+   ./scripts/test-apis.sh
+   ```
+
 ## Test APIs
 
 The Node.js application includes numerous test endpoints organized into categories:

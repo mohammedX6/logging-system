@@ -728,7 +728,7 @@
   "refresh": "10s",
   "schemaVersion": 38,
   "style": "dark",
-  "tags": ["errors", "monitoring", "nodejs"],
+  "tags": ["errors", "monitoring", "nodejs", "database"],
   "templating": {
     "list": [
       {

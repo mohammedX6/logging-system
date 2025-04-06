@@ -34,4 +34,20 @@ build/
 .Spotlight-V100
 .Trashes
 ehthumbs.db
-Thumbs.db 
+Thumbs.db
+
+# Metrics and monitoring data
+prometheus/data/
+loki/data/
+grafana/data/
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Test coverage
+coverage/
+
+# Local development
+*.local 
