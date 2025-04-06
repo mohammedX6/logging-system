@@ -17,4 +17,16 @@ scrape_configs:
           job: nodejs-app
           environment: development
           application: monitoring-poc-v2
-          __path__: /var/log/app.log 
+          log_type: application
+          __path__: /var/log/app.log
+
+  - job_name: nodejs-error-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nodejs-app
+          environment: development
+          application: monitoring-poc-v2
+          log_type: error
+          __path__: /var/log/error.log 

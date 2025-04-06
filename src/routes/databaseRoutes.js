@@ -139,13 +139,28 @@ router.get('/posts/:id', (req, res) => {
 
 // Simulated database error
 router.get('/db-error', (req, res) => {
-  logger.error('Simulated database error');
+  const dbError = new Error('Database connection error');
+  dbError.code = 'DB_CONN_ERROR';
+  dbError.details = 'Simulated database connection timeout after 5000ms';
+  dbError.query = 'SELECT * FROM users WHERE id = ?';
+  dbError.params = ['user_123'];
+  
+  logger.error('Simulated database error', {
+    error: dbError.message,
+    code: dbError.code, 
+    details: dbError.details,
+    query: dbError.query,
+    params: dbError.params,
+    stack: dbError.stack
+  });
   
   setTimeout(() => {
     res.status(500).json({
-      error: 'Database connection error',
-      code: 'DB_CONN_ERROR',
-      details: 'Simulated database connection timeout after 5000ms',
+      error: dbError.message,
+      code: dbError.code,
+      details: dbError.details,
+      query: dbError.query,
+      params: dbError.params,
       timestamp: new Date().toISOString()
     });
   }, 1000);

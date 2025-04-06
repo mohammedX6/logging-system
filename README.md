@@ -196,6 +196,7 @@ The Node.js application includes numerous test endpoints organized into categori
 - `GET /errors/exception` - Throws an uncaught exception
 - `GET /errors/memory-leak` - Simulates a memory leak
 - `GET /errors/reset-memory-leak` - Resets the memory leak simulation
+- `GET /errors/debug-error` - Returns detailed error information for debugging
 
 ### Database Simulation Endpoints
 - `GET /db/users` - Get all users from simulated database
@@ -226,6 +227,93 @@ The system includes pre-configured alerts:
 
 - **High Error Rate**: Triggers when more than 10% of requests return errors
 - **Slow Response Time**: Triggers when the average response time exceeds 1 second
+
+## Viewing Detailed Errors
+
+The system provides detailed error information for debugging purposes. To view detailed errors:
+
+1. Access one of the error endpoints, such as `/errors/debug-error` or `/errors/exception`
+2. The response will include detailed error information including:
+   - Error message
+   - Error code
+   - Additional details
+   - Stack trace (in non-production environments)
+   - Request path
+   - Timestamp
+
+### Viewing Errors in Grafana
+
+For a more comprehensive view of error details, you can use the Grafana dashboards:
+
+1. Generate some errors by accessing endpoints like:
+   - `/errors/debug-error` - Creates a single detailed error
+   - `/errors/exception` - Generates an uncaught exception
+   - `/errors/multi-error-test` - Creates multiple different error types at once
+   - `/errors/grafana-error-test` - Creates a comprehensive error with all possible fields
+
+2. Open Grafana at http://localhost:3001 and log in with admin/admin
+
+3. Choose one of the error-viewing dashboards:
+   - **Node.js Application Dashboard** - Includes general error panels along with other application metrics
+   - **Comprehensive Error Dashboard** - Dedicated dashboard with enhanced error visualization and filtering
+
+4. In the Comprehensive Error Dashboard you'll find:
+   - Error trends and distributions
+   - Detailed error tables with all properties
+   - Stack trace viewer
+   - Filtering by error code and search term
+   - Error severity visualization
+   - Complete JSON view of errors
+
+5. Use the filters and search to find specific errors:
+   - Enter error codes like `VALIDATION_ERROR` in the Error Code filter 
+   - Search for specific messages or terms in the Error Search
+   - Filter by time range to find recent errors
+
+6. For advanced analysis, expand the JSON view to see all error properties, including nested objects.
+
+### Troubleshooting Missing Error Details
+
+If you can't see detailed errors in Grafana:
+
+1. **Check that logs are being generated**: 
+   - Access the `/errors/grafana-error-test` endpoint to generate a test error
+   - Check the `logs/error.log` file to confirm errors are being logged
+
+2. **Verify Promtail configuration**:
+   - Make sure the `promtail-config.yml` correctly maps to both `app.log` and `error.log`
+   - Ensure volume mounts in `docker-compose.yml` are correct
+
+3. **Refresh Grafana**:
+   - Try adjusting the time range in Grafana to include when errors were generated
+   - Use the browser's refresh button or Grafana's refresh icon
+
+4. **Check Loki directly**:
+   - Go to Explore in Grafana and select the Loki data source
+   - Run this query: `{job="nodejs-app"} |= "error" | json`
+   - If logs appear here but not in panels, there might be an issue with panel queries
+
+5. **Restart the stack**:
+   - Sometimes logs don't appear until services are restarted
+   - Try `docker-compose down` followed by `docker-compose up -d`
+
+### Environment Configuration
+
+In non-production environments (when `NODE_ENV` is not set to 'production'), the system includes additional debugging information in error responses, such as stack traces and custom error properties.
+
+To change the environment mode:
+
+```bash
+# For development mode with detailed errors
+export NODE_ENV=development
+npm start
+
+# For production mode with limited error details
+export NODE_ENV=production
+npm start
+```
+
+All errors are also logged to the console and to log files in the `logs` directory. These logs always contain full error details regardless of environment.
 
 ## Project Structure
 
@@ -270,4 +358,4 @@ Logs are saved to files in the `logs` directory:
 - `app.log`: Contains all logs at all levels
 - `error.log`: Contains only error-level logs
 
-These log files are automatically rotated when they reach 5MB, with a maximum of 5 historical files kept. 
+These log files are automatically rotated when they reach 5MB, with a maximum of 5 historical files kept.

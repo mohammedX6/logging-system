@@ -16,10 +16,23 @@ process.on('uncaughtException', (err) => {
   console.error('UNCAUGHT EXCEPTION! 💥 Logging the error and continuing...');
   console.error(err.name, err.message);
   console.error(err.stack);
-  logger.error('Uncaught exception', { 
-    error: err.message, 
-    stack: err.stack 
-  });
+  
+  // Capture additional error properties if they exist
+  const errorDetails = {
+    error: err.message,
+    name: err.name,
+    stack: err.stack
+  };
+  
+  // Extract any custom properties that might be present
+  if (err.code) errorDetails.code = err.code;
+  if (err.details) errorDetails.details = err.details;
+  if (err.query) {
+    errorDetails.query = err.query;
+    errorDetails.params = err.params;
+  }
+  
+  logger.error('Uncaught exception', errorDetails);
   // Don't exit the process
 });
 
@@ -27,10 +40,23 @@ process.on('unhandledRejection', (err) => {
   console.error('UNHANDLED REJECTION! 💥 Logging the error and continuing...');
   console.error(err.name, err.message);
   console.error(err.stack);
-  logger.error('Unhandled rejection', { 
-    error: err.message, 
-    stack: err.stack 
-  });
+  
+  // Capture additional error properties if they exist
+  const errorDetails = {
+    error: err.message,
+    name: err.name,
+    stack: err.stack
+  };
+  
+  // Extract any custom properties that might be present
+  if (err.code) errorDetails.code = err.code;
+  if (err.details) errorDetails.details = err.details;
+  if (err.query) {
+    errorDetails.query = err.query;
+    errorDetails.params = err.params;
+  }
+  
+  logger.error('Unhandled rejection', errorDetails);
   // Don't exit the process
 });
 
@@ -74,6 +100,9 @@ try {
       { path: '/errors/unauthorized', method: 'GET', description: 'Returns 401 Unauthorized response' },
       { path: '/errors/forbidden', method: 'GET', description: 'Returns 403 Forbidden response' },
       { path: '/errors/exception', method: 'GET', description: 'Throws an uncaught exception (handled by error middleware)' },
+      { path: '/errors/debug-error', method: 'GET', description: 'Returns detailed error information for debugging' },
+      { path: '/errors/multi-error-test', method: 'GET', description: 'Generates multiple error types in logs for Grafana testing' },
+      { path: '/errors/grafana-error-test', method: 'GET', description: 'Creates a comprehensive error log entry with all possible properties for Grafana testing' },
       
       { path: '/db/users', method: 'GET', description: 'Get all users from simulated database' },
       { path: '/db/users/:id', method: 'GET', description: 'Get a user by ID with related posts' },
@@ -201,14 +230,54 @@ try {
   // Error handler
   app.use((err, req, res, next) => {
     try {
-      logger.error('Global error handler', { error: err.message, stack: err.stack });
+      // Extract additional error properties if they exist
+      const errorDetails = {
+        error: err.message,
+        code: err.code,
+        details: err.details,
+        stack: err.stack
+      };
+      
+      // If it's a database error, include additional database-specific information
+      if (err.query) {
+        errorDetails.query = err.query;
+        errorDetails.params = err.params;
+      }
+      
+      logger.error('Global error handler', errorDetails);
+      
       const statusCode = err.statusCode || 500;
-      res.status(statusCode).json({
+      
+      // Create a response object with more detailed error information
+      const errorResponse = {
         error: err.message || 'Internal Server Error',
+        code: err.code,
+        details: err.details,
         statusCode,
         path: req.path,
         timestamp: new Date().toISOString()
-      });
+      };
+      
+      // In development mode, include additional debugging information
+      const isDevelopment = process.env.NODE_ENV !== 'production';
+      if (isDevelopment) {
+        errorResponse.stack = err.stack;
+        
+        // Include additional error properties if they exist
+        if (err.query) {
+          errorResponse.query = err.query;
+          errorResponse.params = err.params;
+        }
+        
+        // Include any additional custom properties
+        for (const [key, value] of Object.entries(err)) {
+          if (!['message', 'stack', 'code', 'details', 'statusCode', 'query', 'params'].includes(key)) {
+            errorResponse[key] = value;
+          }
+        }
+      }
+      
+      res.status(statusCode).json(errorResponse);
     } catch (handlerError) {
       logger.error('Error in error handler', { error: handlerError.message });
       // If headers are already sent, we can't send another response
@@ -221,14 +290,17 @@ try {
   // Start the server
   app.listen(port, () => {
     logger.info(`Server running on port ${port}`);
+    logger.info(`Environment: ${process.env.NODE_ENV || 'development (default)'}`);
+    logger.info(`Detailed error responses: ${(process.env.NODE_ENV !== 'production') ? 'Enabled (non-production)' : 'Disabled (production)'}`);
     
     logger.info('Available test endpoints:');
     logger.info('- Basic endpoints: /, /success, /error, /slow');
     logger.info('- Load test endpoints: /load-test/cpu-intensive, /load-test/memory-intensive, /load-test/random-latency, /load-test/extreme-cpu, /load-test/memory-leak, /load-test/reset-memory-leak, /load-test/heavy-io, /load-test/complex-query, /load-test/concurrent-workload');
-    logger.info('- Error endpoints: /errors/not-found, /errors/bad-request, /errors/unauthorized, /errors/forbidden, /errors/exception');
+    logger.info('- Error endpoints: /errors/not-found, /errors/bad-request, /errors/unauthorized, /errors/forbidden, /errors/exception, /errors/debug-error, /errors/multi-error-test, /errors/grafana-error-test');
     logger.info('- Database endpoints: /db/users, /db/users/:id, /db/posts, /db/posts/:id, /db/db-error, /db/slow-query');
     logger.info('- Documentation: /docs');
     logger.info('- Metrics: /metrics');
+    logger.info('- Dashboard: Open http://localhost:3001 for Grafana dashboards (Comprehensive Error Dashboard available)');
   });
 } catch (error) {
   logger.error('Fatal application error', { 
