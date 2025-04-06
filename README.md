@@ -376,6 +376,36 @@ npm start
 
 All errors are also logged to the console and to log files in the `logs` directory. These logs always contain full error details regardless of environment.
 
+## Persistent Log Storage
+
+The Loki service has been configured for persistent log storage with an extended retention period. Key features of this configuration include:
+
+- **Retention Period**: Logs are stored for 365 days (1 year) before being deleted
+- **Write-Ahead Log (WAL)**: Enabled to prevent data loss during unplanned shutdowns
+- **Physical Storage**: All log data is stored in a persistent Docker volume
+- **Compaction**: Regular compaction of log data to optimize storage usage
+- **Automatic Restart**: Loki service automatically restarts if it crashes
+
+### How Log Retention Works
+
+1. Logs are collected by Promtail from your application
+2. Promtail forwards logs to Loki for storage
+3. Loki retains logs for 365 days (1 year) in persistent storage
+4. After 365 days, logs are automatically deleted through the compaction process
+5. The compaction process runs every 10 minutes to optimize storage
+
+### Recovering After a Restart
+
+Thanks to the persistent storage configuration, all logs will be retained even if:
+- The application container is restarted
+- The Docker host is rebooted
+- Loki service crashes
+
+To verify persistence after a restart:
+1. Generate some logs by accessing application endpoints
+2. Restart the Docker services: `docker-compose restart`
+3. Check Grafana to confirm logs are still available
+
 ## Project Structure
 
 ```

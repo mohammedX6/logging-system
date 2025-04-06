@@ -74,18 +74,18 @@ count=1
 while true; do
   echo -e "${BLUE}Iteration: $count${NC}"
   
-  # Make a normal request 70% of the time
+  # Make an error request 70% of the time
   if [[ $((RANDOM % 10)) -lt 7 ]]; then
-    random_normal=${NORMAL_ENDPOINTS[$RANDOM % ${#NORMAL_ENDPOINTS[@]}]}
-    make_request $random_normal 0
-  else
-    # Make an error request 30% of the time
     random_error=${ERROR_ENDPOINTS[$RANDOM % ${#ERROR_ENDPOINTS[@]}]}
     make_request $random_error 1
+  else
+    # Make a normal request 30% of the time
+    random_normal=${NORMAL_ENDPOINTS[$RANDOM % ${#NORMAL_ENDPOINTS[@]}]}
+    make_request $random_normal 0
   fi
   
-  # Sleep between 2-4 seconds
-  sleep_time=$((RANDOM % 3 + 2))
+  # Sleep between 0.5-0.8 seconds
+  sleep_time=$(awk -v min=0.5 -v max=0.8 'BEGIN{srand(); print min+rand()*(max-min)}')
   echo "Waiting ${sleep_time} seconds..."
   sleep $sleep_time
   
