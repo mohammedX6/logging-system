@@ -174,7 +174,6 @@ const rateLimitCounter = new client.Counter({
 // Safe observe function to prevent app crashes
 const safeObserve = (histogram, labels, value) => {
   try {
-    // Convert to number and check if valid
     const numValue = Number(value);
     if (!isNaN(numValue) && typeof numValue === 'number' && isFinite(numValue)) {
       histogram.observe(labels, numValue);
@@ -197,50 +196,35 @@ const safeObserve = (histogram, labels, value) => {
 // Middleware for tracking HTTP metrics
 const httpMetricsMiddleware = (req, res, next) => {
   try {
-    // Track active requests
     activeRequests.inc({ method: req.method });
 
-    // Track request size
     const requestSize = req.headers['content-length'] ? parseInt(req.headers['content-length']) : 0;
     safeObserve(httpRequestSize, { method: req.method, route: req.path }, requestSize);
 
-    // Calculate request duration
     const start = Date.now();
-    
-    // Capture original end method
     const originalEnd = res.end;
     
-    // Override end method to capture metrics
     res.end = function(chunk, encoding) {
       try {
-        // Calculate request duration
         const duration = (Date.now() - start) / 1000;
-        
-        // Restore original end function
         res.end = originalEnd;
-        
-        // Call the original end function
         res.end(chunk, encoding);
         
         try {
-          // Record metrics
           const route = req.route ? req.route.path || req.path : req.path;
           
-          // Track request counter
           httpRequestCounter.inc({ 
             method: req.method, 
             route, 
             status: res.statusCode 
           });
           
-          // Track request duration - Use safe observe
           safeObserve(
             httpRequestDuration, 
             { method: req.method, route, status: res.statusCode }, 
             duration
           );
           
-          // Track response size - Use safe observe
           const responseSize = chunk ? chunk.length : 0;
           safeObserve(
             httpResponseSize, 
@@ -248,27 +232,22 @@ const httpMetricsMiddleware = (req, res, next) => {
             responseSize
           );
           
-          // Decrement active requests
           activeRequests.dec({ method: req.method });
 
-          // If error, increment error counter
           if (res.statusCode >= 400) {
             const errorType = res.statusCode >= 500 ? 'server' : 'client';
             errorCounter.inc({ type: errorType });
           }
         } catch (error) {
-          // Log the error but don't interrupt the response
           logger.error('Error recording metrics', { error: error.message });
         }
       } catch (error) {
-        // If anything goes wrong, make sure we still call the original end
         res.end = originalEnd;
         res.end(chunk, encoding);
         logger.error('Error in metrics middleware', { error: error.message });
       }
     };
   } catch (error) {
-    // Log any errors but continue processing the request
     logger.error('Error setting up metrics middleware', { error: error.message });
   }
   
