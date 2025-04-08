@@ -55,7 +55,7 @@ const logger = winston.createLogger({
     winston.format.errors({ stack: true }),
     winston.format.json()
   ),
-  defaultMeta: { service: process.env.APP_NAME  },
+  defaultMeta: { service: process.env.APP_NAME },
   transports: [
     // Console transport for development
     new winston.transports.Console({
@@ -93,7 +93,7 @@ const logger = winston.createLogger({
       host: process.env.LOKI_URL,
       labels: {
         job: "nodejs-app",
-        environment: process.env.NODE_ENV ,
+        environment: process.env.NODE_ENV,
         application: process.env.APP_NAME,
       },
       json: true,
@@ -107,7 +107,7 @@ const logger = winston.createLogger({
       host: process.env.LOKI_URL,
       labels: {
         job: "nodejs-app",
-        environment: process.env.NODE_ENV ,
+        environment: process.env.NODE_ENV,
         application: process.env.APP_NAME,
         log_type: "error",
       },
