@@ -1,7 +1,7 @@
 {
   "name": "monitoring-poc-v2",
   "version": "1.0.0",
-  "description": "Centralized Logging and Monitoring System using Prometheus, Loki, Promtail, and Grafana",
+  "description": "Centralized Logging and Monitoring System using Prometheus, Loki, and Grafana",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -9,12 +9,14 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
+    "dotenv": "^16.4.7",
     "express": "^5.1.0",
     "morgan": "^1.10.0",
     "prom-client": "^15.1.3",
-    "winston": "^3.17.0"
+    "winston": "^3.17.0",
+    "winston-loki": "^6.1.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"
   }
-} 
+}

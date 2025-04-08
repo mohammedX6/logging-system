@@ -8,8 +8,6 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
-    volumes:
-      - ./logs:/app/logs
     networks:
       - monitoring-network
     depends_on:
@@ -27,9 +25,11 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=365d'
       - '--web.console.libraries=/etc/prometheus/console_libraries'
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--web.enable-lifecycle'
+    restart: unless-stopped
     networks:
       - monitoring-network
 
@@ -46,18 +46,6 @@ services:
     restart: always
     networks:
       - monitoring-network
-
-  # Promtail for log collection
-  promtail:
-    image: grafana/promtail:latest
-    volumes:
-      - ./logs:/var/log
-      - ./promtail/promtail-config.yml:/etc/promtail/config.yml
-    command: -config.file=/etc/promtail/config.yml
-    networks:
-      - monitoring-network
-    depends_on:
-      - loki
 
   # Grafana for visualization
   grafana:
@@ -83,6 +71,8 @@ networks:
 
 volumes:
   prometheus-data:
+    driver: local
   loki-data:
     driver: local
-  grafana-data: 
+  grafana-data:
+    driver: local 

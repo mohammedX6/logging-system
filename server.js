@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 // Import required dependencies
 const express = require('express');
 const morgan = require('morgan');
@@ -85,11 +87,14 @@ try {
   // Documentation route - showing all available endpoints
   app.get('/docs', (req, res) => {
     const endpoints = [
+      // Basic Routes
       { path: '/', method: 'GET', description: 'Root endpoint - Basic response' },
       { path: '/success', method: 'GET', description: 'Returns 200 OK success response' },
       { path: '/error', method: 'GET', description: 'Returns 500 Internal Server Error' },
       { path: '/slow', method: 'GET', description: 'Simulates a 2-second delay before responding' },
+      { path: '/demo-business-transaction', method: 'GET', description: 'Demo business transaction with optional failure simulation' },
       
+      // Load Test Routes
       { path: '/load-test/cpu-intensive', method: 'GET', description: 'CPU intensive operation (calculates prime numbers)' },
       { path: '/load-test/memory-intensive', method: 'GET', description: 'Memory intensive operation (creates large arrays)' },
       { path: '/load-test/random-latency', method: 'GET', description: 'Random response times (0-2000ms)' },
@@ -100,6 +105,7 @@ try {
       { path: '/load-test/complex-query', method: 'GET', description: 'Complex database query simulation with joins and aggregations' },
       { path: '/load-test/concurrent-workload', method: 'GET', description: 'Concurrent workload running multiple operations in parallel' },
       
+      // Error Routes
       { path: '/errors/not-found', method: 'GET', description: 'Returns 404 Not Found response' },
       { path: '/errors/bad-request', method: 'GET', description: 'Returns 400 Bad Request response' },
       { path: '/errors/unauthorized', method: 'GET', description: 'Returns 401 Unauthorized response' },
@@ -109,14 +115,23 @@ try {
       { path: '/errors/multi-error-test', method: 'GET', description: 'Generates multiple error types in logs for Grafana testing' },
       { path: '/errors/grafana-error-test', method: 'GET', description: 'Creates a comprehensive error log entry with all possible properties for Grafana testing' },
       
+      // Database Routes
       { path: '/db/users', method: 'GET', description: 'Get all users from simulated database' },
       { path: '/db/users/:id', method: 'GET', description: 'Get a user by ID with related posts' },
       { path: '/db/posts', method: 'GET', description: 'Get all posts from simulated database' },
       { path: '/db/posts/:id', method: 'GET', description: 'Get a post by ID with comments and author' },
       { path: '/db/db-error', method: 'GET', description: 'Simulates a database connection error' },
       { path: '/db/slow-query', method: 'GET', description: 'Simulates a slow database query (3 seconds)' },
+      { path: '/db/ora-00942', method: 'GET', description: 'Simulates Oracle ORA-00942: Table or view does not exist error' },
+      { path: '/db/syntax-error', method: 'GET', description: 'Simulates SQL syntax error' },
+      { path: '/db/deadlock', method: 'GET', description: 'Simulates database deadlock error' },
+      { path: '/db/ora-01652', method: 'GET', description: 'Simulates Oracle ORA-01652: Unable to extend temp segment error' },
+      { path: '/db/foreign-key', method: 'GET', description: 'Simulates foreign key constraint error' },
       
+      // System Routes
       { path: '/metrics', method: 'GET', description: 'Prometheus metrics endpoint' },
+      { path: '/health', method: 'GET', description: 'Basic health check endpoint' },
+      { path: '/health/detailed', method: 'GET', description: 'Detailed health status with memory usage and active requests' },
       { path: '/docs', method: 'GET', description: 'This documentation page' }
     ];
     

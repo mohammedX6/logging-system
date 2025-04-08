@@ -1,6 +1,6 @@
 # Node.js Monitoring & Logging System
 
-A centralized logging and monitoring system using open-source tools (Prometheus, Loki, Promtail, and Grafana) for Node.js applications.
+A centralized logging and monitoring system using open-source tools (Prometheus, Loki, and Grafana) for Node.js applications.
 
 ## Overview
 
@@ -9,7 +9,6 @@ This project demonstrates a complete monitoring and observability stack for Node
 - **Node.js App**: An Express server with custom metrics, logging, and test APIs
 - **Prometheus**: For scraping and storing time-series metrics
 - **Loki**: For efficient log storage and querying
-- **Promtail**: For collecting and forwarding logs to Loki
 - **Grafana**: For visualization of metrics and logs, plus alerting
 
 ## Service URLs
@@ -20,11 +19,8 @@ This project demonstrates a complete monitoring and observability stack for Node
 | **Node.js Docs** | http://localhost:3000/docs | API documentation | N/A |
 | **Node.js Metrics** | http://localhost:3000/metrics | Raw Prometheus metrics | N/A |
 | **Prometheus** | http://localhost:9090 | Metrics database and query engine | N/A |
-| **Loki** | http://localhost:3100 | Log aggregation system (API only) | N/A |
 | **Grafana** | http://localhost:3001 | Visualization dashboard | admin/admin |
-| **Grafana Dashboard** | http://localhost:3001/d/nodejs-app/node-js-application-dashboard | Main Node.js dashboard | admin/admin |
-
-**Note**: Promtail runs as an internal service on port 9080 with no UI.
+| **Loki** | http://localhost:3100 | Log aggregation service | N/A |
 
 ## How to View Dashboards
 
@@ -56,16 +52,12 @@ You can customize dashboards or create new ones using Grafana's dashboard editor
 └──┬──┘  └───┬────┘  └──┬──┘
    │         │          │
    ▼         ▼          ▼
-┌──────┐  ┌──────────┐  ┌─────┐
-│Promtail│ │Prometheus│  │(Future)│
-└───┬──┘  └────┬─────┘  └─────┘
-    │          │
-    ▼          ▼
- ┌─────┐    ┌──────┐
- │Loki │    │Query │
- └──┬──┘    └───┬──┘
-    │           │
-    └─────┬─────┘
+┌─────┐  ┌──────────┐  ┌─────┐
+│Loki │  │Prometheus│  │(Future)│
+└──┬──┘  └────┬─────┘  └─────┘
+    │         │
+    └─────┬───┘
+          │
           ▼
      ┌──────────┐
      │          │
@@ -81,25 +73,20 @@ You can customize dashboards or create new ones using Grafana's dashboard editor
 
 1. **Your Node.js Application**
    - Generates metrics via `prom-client` (request counts, latency, memory usage)
-   - Produces logs through `winston` logger
-   - Log files are saved in the `logs` directory
+   - Produces logs through `winston` logger with Loki transport
+   - Logs are sent directly to Loki via HTTP
 
 2. **Prometheus**
    - Regularly scrapes the `/metrics` endpoint of your app (every 15s)
    - Stores time-series metrics data
    - Provides a query language (PromQL) for analyzing metrics
 
-3. **Promtail**
-   - Watches and tails your log files
-   - Adds labels like `job=nodejs-app`
-   - Sends log entries to Loki
-
-4. **Loki**
-   - Receives and stores logs from Promtail
+3. **Loki**
+   - Receives logs directly from the Node.js application via HTTP
    - Makes logs available for querying
    - Groups logs by labels for efficient retrieval
 
-5. **Grafana**
+4. **Grafana**
    - Connects to both Prometheus and Loki as data sources
    - Displays metrics in visual dashboards
    - Shows log entries in searchable log viewers
@@ -128,7 +115,7 @@ When a request hits your `/load-test/cpu-intensive` endpoint:
    - Active request counter decreases
    - Additional log entry is created
 
-5. Promtail detects the new log entries and sends them to Loki
+5. Logs are sent directly to Loki via the Winston Loki transport
 
 6. Prometheus scrapes the updated `/metrics` endpoint on its next interval
 
@@ -145,11 +132,10 @@ When a request hits your `/load-test/cpu-intensive` endpoint:
 ### Key Integration Points
 
 1. **src/utils/metrics.js**: Sets up Prometheus metrics and middleware
-2. **src/utils/logger.js**: Configures Winston for structured logging
+2. **src/utils/logger.js**: Configures Winston with Loki transport for direct logging
 3. **docker-compose.yml**: Connects all services on the same network
 4. **prometheus/prometheus.yml**: Tells Prometheus where to scrape metrics
-5. **promtail/promtail-config.yml**: Tells Promtail which logs to collect
-6. **grafana/provisioning/**: Pre-configures Grafana with dashboards and data sources
+5. **grafana/provisioning/**: Pre-configures Grafana with dashboards and data sources
 
 ## Getting Started
 
@@ -184,6 +170,72 @@ docker-compose down && docker-compose up --build -d
    ./scripts/validate-services.sh
    ./scripts/test-apis.sh
    ```
+
+## Logging System
+
+The logging system uses Winston with Loki transport for direct log delivery:
+
+1. **Log Configuration**:
+   - Console transport for development output
+   - Loki transport for all logs
+   - Separate Loki transport for error logs with additional labels
+
+2. **Log Structure**:
+   - JSON format for structured logging
+   - Timestamps in ISO format
+   - Error details including stack traces
+   - Custom labels for filtering
+
+3. **Log Levels**:
+   - error: For error conditions
+   - warn: For warning conditions
+   - info: For informational messages
+   - http: For HTTP request logging
+   - debug: For debug messages
+
+4. **Viewing Logs**:
+   - Access Grafana at http://localhost:3001
+   - Navigate to Explore
+   - Select Loki data source
+   - Use LogQL queries to filter logs:
+     - All logs: `{job="nodejs-app"}`
+     - Error logs: `{job="nodejs-app", log_type="error"}`
+     - HTTP logs: `{job="nodejs-app"} |= "HTTP"`
+
+## Project Structure
+
+```
+.
+├── docker-compose.yml        # Docker Compose configuration
+├── Dockerfile                # Node.js app Dockerfile
+├── server.js                 # Main application file
+├── package.json              # Node.js dependencies
+├── README.md                 # This readme file
+├── src/
+│   ├── routes/               # API route modules
+│   │   ├── basicRoutes.js    # Basic test routes
+│   │   ├── loadTestRoutes.js # Load testing routes
+│   │   ├── errorRoutes.js    # Error generating routes
+│   │   └── databaseRoutes.js # Database simulation routes
+│   └── utils/                # Utility modules
+│       ├── logger.js         # Winston logger configuration
+│       └── metrics.js        # Prometheus metrics configuration
+├── prometheus/               # Prometheus configuration
+├── loki/                     # Loki configuration
+├── grafana/                  # Grafana dashboards and datasources
+└── logs/                     # Application logs directory (optional)
+```
+
+## Local Development
+
+To run the application locally for development:
+
+```bash
+npm install
+npm run dev
+```
+
+This will start the Node.js application with nodemon for automatic reloading.
 
 ## Utility Scripts
 
@@ -337,13 +389,14 @@ For a more comprehensive view of error details, you can use the Grafana dashboar
 
 If you can't see detailed errors in Grafana:
 
-1. **Check that logs are being generated**: 
-   - Access the `/errors/grafana-error-test` endpoint to generate a test error
-   - Check the `logs/error.log` file to confirm errors are being logged
+1. **Verify Loki configuration**:
+   - Make sure the `loki-config.yml` is properly configured
+   - Check that logs are being received by Loki
 
-2. **Verify Promtail configuration**:
-   - Make sure the `promtail-config.yml` correctly maps to both `app.log` and `error.log`
-   - Ensure volume mounts in `docker-compose.yml` are correct
+2. **Log Collection Flow**:
+   - Logs are sent directly from the Node.js application to Loki
+   - Loki stores and indexes the logs
+   - Grafana queries Loki to display logs
 
 3. **Refresh Grafana**:
    - Try adjusting the time range in Grafana to include when errors were generated
@@ -426,7 +479,6 @@ To verify persistence after a restart:
 │       └── metrics.js        # Prometheus metrics configuration
 ├── prometheus/               # Prometheus configuration
 ├── loki/                     # Loki configuration
-├── promtail/                 # Promtail configuration
 ├── grafana/                  # Grafana dashboards and datasources
 └── logs/                     # Application logs directory
 ```
@@ -516,3 +568,140 @@ A new Grafana dashboard for business metrics is available showing:
 - 95th percentile transaction duration
 - System health status
 - Error counts by type and category
+
+## Available Metrics
+
+This section documents all available metrics that can be queried in Prometheus and visualized in Grafana.
+
+### Application Metrics
+
+#### HTTP Metrics
+- `http_requests_total{method="<method>", route="<route>", status="<status>"}` - Total number of HTTP requests
+- `http_request_duration_seconds{method="<method>", route="<route>", status="<status>"}` - Duration of HTTP requests
+- `http_request_size_bytes{method="<method>", route="<route>"}` - Size of HTTP requests
+- `http_response_size_bytes{method="<method>", route="<route>", status="<status>"}` - Size of HTTP responses
+- `http_active_requests{method="<method>"}` - Number of currently active HTTP requests
+
+#### Memory Metrics
+- `app_memory_usage_bytes{type="rss"}` - Resident Set Size memory usage
+- `app_memory_usage_bytes{type="heapTotal"}` - Total heap size
+- `app_memory_usage_bytes{type="heapUsed"}` - Used heap size
+- `app_memory_usage_bytes{type="external"}` - External memory size
+- `app_memory_usage_bytes{type="arrayBuffers"}` - Array buffers size
+
+#### Node.js Runtime Metrics
+- `app_nodejs_eventloop_lag_seconds` - Event loop lag
+- `app_nodejs_eventloop_lag_p50_seconds` - Event loop lag 50th percentile
+- `app_nodejs_eventloop_lag_p90_seconds` - Event loop lag 90th percentile
+- `app_nodejs_eventloop_lag_p99_seconds` - Event loop lag 99th percentile
+- `app_nodejs_active_handles{type="<type>"}` - Active handle count by type
+- `app_nodejs_active_requests{type="<type>"}` - Active request count by type
+- `app_nodejs_heap_size_total_bytes` - Total heap size
+- `app_nodejs_heap_size_used_bytes` - Used heap size
+- `app_nodejs_external_memory_bytes` - External memory usage
+
+#### Process Metrics
+- `app_process_cpu_seconds_total` - Total CPU time spent
+- `app_process_resident_memory_bytes` - Resident memory size
+- `app_process_virtual_memory_bytes` - Virtual memory size
+- `app_process_heap_bytes` - Process heap size
+- `app_process_open_fds` - Open file descriptors
+- `app_process_max_fds` - Maximum file descriptors
+
+#### Business Metrics
+- `business_transactions_total{type="<type>", status="<status>"}` - Total business transactions
+- `business_transaction_duration_seconds{type="<type>", status="<status>"}` - Business transaction duration
+- `database_queries_total{operation="<operation>", entity="<entity>"}` - Total database queries
+- `database_query_duration_seconds{operation="<operation>", entity="<entity>"}` - Database query duration
+
+#### Error Metrics
+- `app_errors_total{type="<type>"}` - Total application errors
+- `error_details_total{category="<category>", subcategory="<subcategory>", code="<code>"}` - Detailed error breakdown
+
+#### Load Test Metrics
+- `fibonacci_calculation_duration_seconds{input="<input>"}` - Duration of Fibonacci calculations
+- `memory_leak_simulation_bytes` - Memory allocated by leak simulation
+- `memory_leak_items_count` - Items in memory leak simulation
+- `io_operations_duration_seconds{iterations="<iterations>"}` - I/O operations duration
+- `complex_query_duration_seconds` - Complex query duration
+- `concurrent_workload_duration_seconds` - Concurrent workload duration
+
+#### System Health
+- `system_health_status{component="<component>"}` - System health indicators (1=healthy, 0=unhealthy)
+- `up{job="<job>"}` - Target up/down status (1=up, 0=down)
+
+### Useful PromQL Queries
+
+#### Request Rate and Latency
+```promql
+# Request rate per second over 5 minutes
+rate(http_requests_total[5m])
+
+# 95th percentile request duration
+histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))
+
+# Success rate
+sum(rate(http_requests_total{status=~"2.."}[5m])) / sum(rate(http_requests_total[5m]))
+```
+
+#### Memory Usage
+```promql
+# Memory usage trend
+rate(app_memory_usage_bytes{type="heapUsed"}[5m])
+
+# Memory usage by type
+app_memory_usage_bytes
+
+# Process resident memory
+app_process_resident_memory_bytes
+```
+
+#### Error Rates
+```promql
+# Error rate per second
+rate(app_errors_total[5m])
+
+# HTTP error rate (status >= 400)
+sum(rate(http_requests_total{status=~"[45].."}[5m]))
+
+# Error percentage
+(sum(rate(http_requests_total{status=~"[45].."}[5m])) / sum(rate(http_requests_total[5m]))) * 100
+```
+
+#### Performance
+```promql
+# Event loop lag trend
+rate(app_nodejs_eventloop_lag_seconds[5m])
+
+# CPU usage
+rate(app_process_cpu_seconds_total[5m])
+
+# Database query latency
+histogram_quantile(0.95, rate(database_query_duration_seconds_bucket[5m]))
+```
+
+### Using These Metrics
+
+1. **In Prometheus UI**:
+   - Go to http://localhost:9090
+   - Enter any of these metrics or PromQL queries
+   - Click "Execute"
+   - Switch between "Table" and "Graph" views
+
+2. **In Grafana**:
+   - Go to http://localhost:3001
+   - Navigate to Dashboards
+   - Use these metrics to create new panels or modify existing ones
+   - Create alerts based on these metrics
+
+3. **Best Practices**:
+   - Use rates for counter metrics over time windows
+   - Use histogram_quantile for latency analysis
+   - Monitor both technical and business metrics
+   - Set up alerts for critical thresholds
+
+4. **Common Patterns**:
+   - Monitor error rates and latencies
+   - Track resource usage trends
+   - Watch business transaction success rates
+   - Alert on system health changes
